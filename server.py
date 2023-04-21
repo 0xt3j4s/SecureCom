@@ -8,12 +8,11 @@ from Crypto.Util.Padding import pad, unpad
 
 
 # Set up socket
-HOST = ''  # listen on all available interfaces
+HOST = '0.0.0.0'  # listen on all available interfaces
 PORT = 12345
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((HOST, PORT))
 s.listen(1)
-
 
 
 def handle_client(client):
@@ -31,21 +30,21 @@ def handle_client(client):
     key = pow(int(exchange), i, n) 
 
     print("\nDiffie-Hellman key exchange performed successfully on the server side!\n")
-    print("Key i.e. (g^(ij)):", key)
+    print("Key i.e. (g^(ij)):", key, flush=True)
 
     # Perform key agreement with client
 
     end_time = time.time()
-    print("Key Exchange Time (s):", end_time - start_time)
+    print("Key Exchange Time (s):", end_time - start_time, flush=True)
 
     # Generate AES key from shared key
     aes_key = hashlib.sha256(str(key).encode()).digest()[:16]
-    print("\nAES Key:", aes_key)
+    print("\nAES Key:", aes_key, flush=True)
 
 
     # Derive HMAC key from shared key
     hmac_key = hashlib.sha256(b"HMAC_" + str(key).encode()).digest()[:16]
-    print("\nHMAC Key:", hmac_key)
+    print("\nHMAC Key:", hmac_key, flush=True)
 
     # Receive encrypted message and HMAC from client
     start_time = time.time()
@@ -63,18 +62,18 @@ def handle_client(client):
         # Decrypt message
         cipher = AES.new(aes_key, AES.MODE_EAX, nonce=cipher_text[:16])
         plain_text = unpad(cipher.decrypt(cipher_text[16:]), AES.block_size)
-        print('\nReceived message:', plain_text.decode())
+        print('\nReceived message:', plain_text.decode(), flush=True)
     else:
         print('\nHMAC verification failed')
     end_time = time.time()
-    print("\nMessage Decryption Time (s):", end_time - start_time)
+    print("\nMessage Decryption Time (s):", end_time - start_time, flush=True)
 
 
 
 while True:
     # Wait for client to connect
     client, addr = s.accept()
-    print('Connected by', addr)
+    print('Connected by', addr, flush=True)
     handle_client(client)
 
 
