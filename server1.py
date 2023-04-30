@@ -31,22 +31,22 @@ def Diffie_Hellman_key_exchange(g, n, client_id):
 
     client.send(bytes(str(g_j),'utf-8')) # Sending g^j to client
 
-    print(f"sending g^j = {g_j}", flush=True)
+    # print(f"sending g^j = {g_j}", flush=True)
 
     exchange = client.recv(1024).decode() # Receiving g^i from client
 
     keys[client_id] = exchange
-    print("keys:", keys, flush=True)
+    # print("keys:", keys, flush=True)
 
-    print(f"Received g^i = {exchange}", flush=True)
+    # print(f"Received g^i = {exchange}", flush=True)
 
     # Generating key by ((g^j)^i) = g^(ij)
     key = pow(int(exchange), j, n) 
 
     key = key.to_bytes(16, byteorder='big')
 
-    print("\nDiffie-Hellman key exchange performed successfully on the server side!\n")
-    print("Key i.e. (g^(ij)):", key, flush=True)
+    # print("\nDiffie-Hellman key exchange performed successfully on the server side!\n")
+    # print("Key i.e. (g^(ij)):", key, flush=True)
 
     # Perform key agreement with client
 
@@ -92,9 +92,9 @@ def get_messages(client_id, dest_id):
 
     nonce_recv = client_1.recv(1024)
 
-    print("Received ciphertext: ", msg_recv)
-    print("tag: ", tag_recv)
-    print("nonce: ", nonce_recv)
+    # print("Received ciphertext: ", msg_recv)
+    # print("tag: ", tag_recv)
+    # print("nonce: ", nonce_recv)
 
     alert = "\n200: " + str(client_id) + " has sent you a message."
 
@@ -136,7 +136,7 @@ def client_server_communication(client_id, address):
             print("Waiting for client to send message...", flush=True)
 
             recv_name = client.recv(1024).decode('utf-8')
-            print("Received recv name: ", recv_name)
+            # print("Received recv name: ", recv_name)
             while recv_name != "exit":
 
                 if recv_name == "exit":
@@ -145,7 +145,7 @@ def client_server_communication(client_id, address):
                     break
 
                 if  recv_name in clients.loc[:,'user_id'].values:
-                    print("found client")
+                    # print("found client")
                     dest = get_id_from_username(recv_name)
 
                     g_recv = keys[dest]
@@ -188,10 +188,8 @@ def handle_client(client, addr):
                 print("Error: Client disconnected...", addr)
 
             print(f"Key exchange with client {client_id} successful.")
-            print("Key: ", key_s_c)
+            # print("Key: ", key_s_c)
 
-            
-            
 
             communication_thread = threading.Thread(target=client_server_communication, args=(client_id, addr))
             communication_thread.start()
@@ -203,8 +201,6 @@ def handle_client(client, addr):
     except ConnectionResetError:
         print("ConnectionResetError: Client closed the connection unexpectedly.")
 
-        # close the client socket
-        # client.close()
 
 
 
@@ -214,7 +210,7 @@ def handle_client(client, addr):
 def main():
     # Set up socket
     HOST = '0.0.0.0'  # listen on all available interfaces
-    PORT = 810
+    PORT = int(input("Enter port number:"))
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((HOST, PORT))
     s.listen()

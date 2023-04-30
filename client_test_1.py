@@ -5,6 +5,8 @@ import hashlib
 import hmac
 import time
 import threading
+import sys
+import select
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
@@ -18,44 +20,11 @@ i_1 = int.from_bytes(get_random_bytes(16), byteorder='big')
 keys = {"x02": 0, "x03": 0}
 
 
-# def box_text(text, width):
-#     box_chars = {
-#         "horizontal": "─",
-#         "vertical": "│",
-#         "top_left": "┌",
-#         "top_right": "┐",
-#         "bottom_left": "└",
-#         "bottom_right": "┘",
-#     }
-#     box_width = width - 2  # account for left and right borders
-#     horizontal_border = box_chars["horizontal"] * box_width
-#     lines = text.split("\n")
-#     max_line_length = max(len(line) for line in lines)
-#     horizontal_padding = (box_width - max_line_length) // 2
-#     padding = " " * horizontal_padding
-#     padded_lines = [f"{padding}{line}{padding}" for line in lines]
-#     if len(lines) == 1:
-#         box_height = 1
-#     else:
-#         box_height = len(lines) + 1  # account for top and bottom borders
-#     vertical_border = "\n".join(
-#         f"{box_chars['vertical']}{' ' * (box_width)}{box_chars['vertical']}"
-#         for _ in range(box_height - 2)
-#     )
-#     top_border = f"{box_chars['top_left']}{horizontal_border}{box_chars['top_right']}"
-#     bottom_border = f"{box_chars['bottom_left']}{horizontal_border}{box_chars['bottom_right']}"
-#     return f"{top_border}\n{vertical_border}\n{padded_lines[0]}\n{vertical_border}\n{''.join(padded_lines[1:])}\n{vertical_border}\n{bottom_border}"
-
-
-
-
 
 def Diffie_Hellman_key_exchange(g, n, s):
     start_time = time.time()
 
-
     g_i = pow(g, i_1, n)
-
 
     # Receiving g^j from the server
     exchange = s.recv(1024).decode('utf-8')
@@ -82,8 +51,6 @@ def Diffie_Hellman_key_exchange(g, n, s):
     return key
 
 
-
-
 def authenticate(s, token):
     try:
         s.send(bytes(str(token),'utf-8'))
@@ -94,8 +61,7 @@ def authenticate(s, token):
             return False
     except BrokenPipeError:
         print("Connection reset by server")
-        # s.close()
-        # exit()
+
 
 # Perform key agreement with server
 username = "Alice"
@@ -107,9 +73,7 @@ token = hash_object.hexdigest()
 
 def client_client_Key_Exchange(response):
 
-    # response2 = s.recv(1024).decode('utf-8')
     g_recv = int(response[5:])
-
 
     start_time = time.time()
 
@@ -124,7 +88,6 @@ def client_client_Key_Exchange(response):
 
 
 def AES_encrypt(plaintext, key):
-    # Generate AES key from shared key
 
     start_time = time.time()
 
@@ -139,7 +102,7 @@ def AES_encrypt(plaintext, key):
     print('\nMessage:', plaintext)
     print("\nMessage Encryption Time (s):", end_time - start_time)
 
-    return [cipher_text, tag, nonce]
+    return [cipher_text, tag, nonce] # returning ciphertext, tag and nonce
 
 def send_messages(s, dest, key, key_c1_c2):
 
@@ -152,13 +115,13 @@ def send_messages(s, dest, key, key_c1_c2):
             break
 
 
-        print("message: ", message)      
+        # print("message: ", message)      
         
         final_text += message
         final_text += "\n"
 
 
-    print("final_text: ", final_text)
+    # print("final_text: ", final_text)
     
     encryption = AES_encrypt(final_text, key_c1_c2)
 
@@ -166,11 +129,9 @@ def send_messages(s, dest, key, key_c1_c2):
     tag = encryption[1]
     nonce = encryption[2]
 
-    
-
-    print("Sending the final encrypted text: ", final_text)
-    print("tag: ", tag)
-    print("nonce: ", nonce)
+    # print("Sending the final encrypted text: ", final_text)
+    # print("tag: ", tag)
+    # print("nonce: ", nonce)
 
     s.send(final_text)
     time.sleep(0.1)
@@ -178,12 +139,13 @@ def send_messages(s, dest, key, key_c1_c2):
     time.sleep(0.1)
     s.send(nonce)
 
+    print(f"Message sent to {dest} successfully")
 
 def sending_mode(key, s):
     while True:
-        recv = input("Enter username: ")
-        s.send(bytes(recv,'utf-8'))
-        if recv == "exit":
+        recv_client = input("Enter username [Enter 'exit' or '0 to leave the chat]: ")
+        s.send(bytes(recv_client,'utf-8'))
+        if recv_client == "exit":
             break
         
         response = s.recv(1024).decode('utf-8')
@@ -192,22 +154,50 @@ def sending_mode(key, s):
             key_c1_c2 = client_client_Key_Exchange(response)
             print("Key exchange successful")
             print("Key: ", key_c1_c2)
-            send_messages(s, recv, key, key_c1_c2)
+            send_messages(s, recv_client, key, key_c1_c2)
         elif response.startswith("404"):
             print("User not found. Please enter a valid username")
+    
+    print("In receiving mode...")
 
 
 def receiving_mode(key, s):
 
+    print("\nClient is now in receiving mode...\n")
+
+    response = s.recv(1024).decode('utf-8')
+    # print(response)
+
+    key_recv = s.recv(1024).decode('utf-8')
+    # print("key_recv: ", key_recv)
+
+    key_client = pow(int(key_recv), i_1, n)
+    key_client = key_client.to_bytes(16, byteorder='big')
+    # print("Key: ", key_client)
+
     while True:
-        message = s.recv(1024).decode('utf-8')
+        message = s.recv(1024)
+        tag = s.recv(1024)
+        nonce = s.recv(1024)
+
+        # print("Received encrypted text: ", message)
+        # print("tag: ", tag)
+        # print("nonce: ", nonce)
+
+        decrypt_cipher = AES.new(key_client, AES.MODE_GCM, nonce=nonce)
+
+        plain_text = decrypt_cipher.decrypt_and_verify(message, tag)
+
+        print('\nReceived message:', plain_text.decode('utf-8'), flush=True)
+
+        receiving_mode(key, s)
 
 
 def main():
 
     # Set up socket
     HOST = '0.0.0.0'
-    PORT = 810
+    PORT = int(input("Enter port number:"))
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Connect to server
     connected = False
@@ -252,14 +242,32 @@ def main():
     receiving_thread = threading.Thread(target=receiving_mode, args=(key_s_c1, s))
     receiving_thread.start()
 
-    send = input("Send/Receive messages? (y/n): ")
+    print("\n Receiving thread started...\n")
+    
 
-    if send == "y":
-        # Take input from user and send to server
+
+    # Prompt the user to send messages
+    sys.stdout.write("Send messages? (y/n): ")
+    sys.stdout.flush()
+
+    # Wait for 5 seconds for a response
+    readable, _, _ = select.select([sys.stdin], [], [], 5)
+
+    # Check if there is a response
+    if readable:
+        response = sys.stdin.readline().strip()
+        if response.lower() == 'y':
+            sending_thread = threading.Thread(target=sending_mode, args=(key_s_c1, s))
         
-        sending_thread = threading.Thread(target=sending_mode, args=(key_s_c1, s))
+            sending_thread.start()
+
+            print("Starting sending thread...\n")
+            print("You can now send messages to other clients...\n")
+        else:
+            print("Ok, Client in Receiving mode...")
+    else:
+        print("No response, Client in Receiving mode...")
         
-        sending_thread.start()
 
 if __name__ == '__main__':
     main()

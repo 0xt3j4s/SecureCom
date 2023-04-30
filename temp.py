@@ -155,42 +155,44 @@ from Crypto.Random import get_random_bytes
 
 
 
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+# from Crypto.Cipher import AES
+# from Crypto.Random import get_random_bytes
 
-# Shared secret between the clients
-shared_secret = b'\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10'
+# # Shared secret between the clients
+# shared_secret = b'\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10'
 
-# Generate a random nonce
-# nonce = get_random_bytes(16)
+# # Generate a random nonce
+# # nonce = get_random_bytes(16)
 
-# Initialize the cipher in GCM mode with the shared secret and nonce
+# # Initialize the cipher in GCM mode with the shared secret and nonce
+# # cipher = AES.new(shared_secret, AES.MODE_GCM, nonce=nonce)
+
+# # Encrypt the plaintext
+# # plaintext = b"Hello, world!"
+
+
+
+# ciphertext = b'z\xda\xc8\xeeQ\xbc0Q\xb3\x0e[IB'
+# tag = b'\xa6\xe0e\x7f\xc2\xbd\xb1\xb1\xbdb\xac0\xf0<\x93\x97'
+# nonce = b'\x18gv\xa1t\xf1\xed\x83)\x10C;\xb4\x02\x90\xd7'
+# # tag = b'\nL\xac\xec,\xf1\x19\x1a=\xefhB\x86\xac&\x8a'
+# # nonce = b'\xc2\xd3_%\xff\x8b\xfc/h\xc2\xff\x11'
+# # tag = b'\xcaq\x01Vj\xedz\xf6\xef\xe5T\x06"\xf7$\xaf'
+# # ciphertext, tag = cipher.encrypt_and_digest(plaintext)
+
+# # print(ciphertext)
+# # print(tag)
+
+# # print(nonce)
+
+# # Send the ciphertext, nonce, and tag to the receiver
+
+# # # # Initialize the cipher in GCM mode with the shared secret and received nonce
 # cipher = AES.new(shared_secret, AES.MODE_GCM, nonce=nonce)
 
-# Encrypt the plaintext
-# plaintext = b"Hello, world!"
+# # # # # Decrypt the ciphertext
+# plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+
+# print(plaintext.decode('utf-8'))
 
 
-
-ciphertext = b'z\xda\xc8\xeeQ\xbc0Q\xb3\x0e[IB'
-tag = b'\xa6\xe0e\x7f\xc2\xbd\xb1\xb1\xbdb\xac0\xf0<\x93\x97'
-nonce = b'\x18gv\xa1t\xf1\xed\x83)\x10C;\xb4\x02\x90\xd7'
-# tag = b'\nL\xac\xec,\xf1\x19\x1a=\xefhB\x86\xac&\x8a'
-# nonce = b'\xc2\xd3_%\xff\x8b\xfc/h\xc2\xff\x11'
-# tag = b'\xcaq\x01Vj\xedz\xf6\xef\xe5T\x06"\xf7$\xaf'
-# ciphertext, tag = cipher.encrypt_and_digest(plaintext)
-
-# print(ciphertext)
-# print(tag)
-
-# print(nonce)
-
-# Send the ciphertext, nonce, and tag to the receiver
-
-# # # Initialize the cipher in GCM mode with the shared secret and received nonce
-cipher = AES.new(shared_secret, AES.MODE_GCM, nonce=nonce)
-
-# # # # Decrypt the ciphertext
-plaintext = cipher.decrypt_and_verify(ciphertext, tag)
-
-print(plaintext.decode('utf-8'))
