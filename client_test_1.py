@@ -6,14 +6,16 @@ import hmac
 import time
 import threading
 import sys
+import argon2
 import select
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
 
 
-g = 15202575040368582504
-n = 136335431983965418811435822457218613337
+g = 303485816798174947603676379775012389748
+n = 50688311207100724012131965227052314128101131318328922619944512369187572507371
+
 i_1 = int.from_bytes(get_random_bytes(16), byteorder='big')
 
 
@@ -29,20 +31,20 @@ def Diffie_Hellman_key_exchange(g, n, s):
     # Receiving g^j from the server
     exchange = s.recv(1024).decode('utf-8')
 
-    print(f"Received g^j = {exchange}")
+    # print(f"Received g^j = {exchange}")
 
     # Sending g^j to the server
     s.send(bytes(str(g_i),'utf-8')) 
 
-    print(f"sending g^i = {g_i}")
+    # print(f"sending g^i = {g_i}")
 
     # Generating key by ((g^i)^j) = g^(ij)
     key = pow(int(exchange), i_1, n)
 
-    key = key.to_bytes(16, byteorder='big')
+    key = key.to_bytes(32, byteorder='big')
     
     print("\nDiffie-Hellman key exchange performed successfully on the client side!\n")
-    print("Key i.e. (g^(ij)):", key)
+    # print("Key i.e. (g^(ij)):", key)
 
     end_time = time.time()
     
@@ -53,7 +55,11 @@ def Diffie_Hellman_key_exchange(g, n, s):
 
 def authenticate(s, token):
     try:
+        
+        # s.send(bytes(str(username),'utf-8'))
+        # time.sleep(0.1)
         s.send(bytes(str(token),'utf-8'))
+
         response = s.recv(1024).decode('utf-8').strip()
         if response.startswith("200"):
             return True
@@ -65,10 +71,11 @@ def authenticate(s, token):
 
 # Perform key agreement with server
 username = "Alice"
-id = "x01"
-credentials = f"{id}:{username}".encode('utf-8')
+password = "#Alice@123"
+credentials = f"{username}:{password}".encode('utf-8')
 hash_object = hashlib.sha256(credentials)
 token = hash_object.hexdigest()
+
 
 
 def client_client_Key_Exchange(response):
@@ -78,7 +85,7 @@ def client_client_Key_Exchange(response):
     start_time = time.time()
 
     key = pow(g_recv, i_1, n) # shared secret key
-    key = key.to_bytes(16, byteorder='big')
+    key = key.to_bytes(32, byteorder='big')
 
     end_time = time.time()
     
@@ -92,6 +99,12 @@ def AES_encrypt(plaintext, key):
     start_time = time.time()
 
     nonce = get_random_bytes(16)
+
+    # tag: 16 bytes
+    # nonce: 16 bytes
+    # timestamp: 4/8 bytes
+    # message: 15 bytes
+    
 
     cipher = AES.new(key, AES.MODE_GCM, nonce = nonce)
     cipher_text, tag = cipher.encrypt_and_digest(plaintext.encode('utf-8'))
@@ -152,18 +165,23 @@ def sending_mode(key, s):
         print("Response:", response)
         if response.startswith("200"):
             key_c1_c2 = client_client_Key_Exchange(response)
-            print("Key exchange successful")
-            print("Key: ", key_c1_c2)
+            print("Client-Client Key exchange successful")
+            # print("Key: ", key_c1_c2)
             send_messages(s, recv_client, key, key_c1_c2)
         elif response.startswith("404"):
             print("User not found. Please enter a valid username")
     
-    print("In receiving mode...")
+    send_more = input("Do you want to send more messages? [y/n]: ")
+    if send_more.lower() == "y":
+        sending_mode(key, s)
+    else:
+        print("In receiving mode...")
+        receiving_mode(key, s)
 
 
 def receiving_mode(key, s):
 
-    print("\nClient is now in receiving mode...\n")
+    print("\nClient can now receive messages...\n")
 
     response = s.recv(1024).decode('utf-8')
     # print(response)
@@ -172,7 +190,7 @@ def receiving_mode(key, s):
     # print("key_recv: ", key_recv)
 
     key_client = pow(int(key_recv), i_1, n)
-    key_client = key_client.to_bytes(16, byteorder='big')
+    key_client = key_client.to_bytes(32, byteorder='big')
     # print("Key: ", key_client)
 
     while True:
@@ -190,7 +208,12 @@ def receiving_mode(key, s):
 
         print('\nReceived message:', plain_text.decode('utf-8'), flush=True)
 
-        receiving_mode(key, s)
+        send_msg = input("Do you want to send messages? [y/n]: ")
+        if send_msg.lower() == "y":
+            sending_mode(key, s)
+        else:
+            print("Again in receiving mode...")
+            receiving_mode(key, s)
 
 
 def main():
@@ -217,7 +240,7 @@ def main():
 
             key_s_c1 = Diffie_Hellman_key_exchange(g, n, s)
 
-            print(f"key between server and c1: {key_s_c1}")
+            # print(f"key between server and c1: {key_s_c1}")
 
         else:
             print("Authentication failed")
@@ -240,9 +263,11 @@ def main():
         print(response)
 
     receiving_thread = threading.Thread(target=receiving_mode, args=(key_s_c1, s))
+    print("\n Initiating a Receiving thread...\n")
+
     receiving_thread.start()
 
-    print("\n Receiving thread started...\n")
+    
     
 
 
@@ -259,10 +284,12 @@ def main():
         if response.lower() == 'y':
             sending_thread = threading.Thread(target=sending_mode, args=(key_s_c1, s))
         
-            sending_thread.start()
+            
 
-            print("Starting sending thread...\n")
+            print("\nStarting sending thread...\n")
             print("You can now send messages to other clients...\n")
+
+            sending_thread.start()
         else:
             print("Ok, Client in Receiving mode...")
     else:

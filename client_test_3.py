@@ -53,6 +53,8 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def authenticate(s, token):
     try:
+        s.send(bytes(str(username),'utf-8'))
+        time.sleep(0.1)
         s.send(bytes(str(token),'utf-8'))
         response = s.recv(1024).decode('utf-8').strip()
         if response.startswith("200"):
@@ -66,10 +68,13 @@ def authenticate(s, token):
 
 # Perform key agreement with server
 username = "Jack"
-id = "x03"
-credentials = f"{id}:{username}".encode('utf-8')
+# id = "x03"
+password = "^jack*notjack"
+credentials = f"{username}:{password}".encode('utf-8')
 hash_object = hashlib.sha256(credentials)
 token = hash_object.hexdigest()
+
+
 connected = False
 
 while not connected:

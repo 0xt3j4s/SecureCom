@@ -6,6 +6,7 @@ import os
 import threading
 from _thread import *
 import pandas as pd
+import argon2
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
@@ -16,8 +17,9 @@ keys = {"x01": None, "x02": None, "x03": None}
 
 client_sockets = {}
 
-g = 15202575040368582504
-n = 136335431983965418811435822457218613337
+g = 303485816798174947603676379775012389748
+n = 50688311207100724012131965227052314128101131318328922619944512369187572507371
+
 j = int.from_bytes(get_random_bytes(16), byteorder='big')
 
 
@@ -43,7 +45,7 @@ def Diffie_Hellman_key_exchange(g, n, client_id):
     # Generating key by ((g^j)^i) = g^(ij)
     key = pow(int(exchange), j, n) 
 
-    key = key.to_bytes(16, byteorder='big')
+    key = key.to_bytes(32, byteorder='big')
 
     # print("\nDiffie-Hellman key exchange performed successfully on the server side!\n")
     # print("Key i.e. (g^(ij)):", key, flush=True)
@@ -59,14 +61,28 @@ def Diffie_Hellman_key_exchange(g, n, client_id):
 
 def client_auth(client, token):
 
-    tokens = clients.loc[:, 'token'].values
+    # users = clients.loc[:,'user_id'].values
 
-    for i in tokens:
+    # for i in users:
+    #     if i == username:
+    #         if clients.loc[clients['user_id'] == username]['token'].values[0] == token:
+    #             client.send(b"200: Authentication successful. You may now send messages to the server.")   
+    #             return True
+    #         else:
+    #             client.send(b"401: Invalid token. Closing connection with server...")
+
+    # client.send(b"404: User not found. Closing connection with server...")
+    # return False
+            
+
+    all_tokens = clients.loc[:,'token'].values
+
+    for i in all_tokens:
         if i == token:
-            client.send(b"200: Authentication successful. You may now send messages to the server.")   
+            client.send(b"200: Authentication successful. You may now send messages to the server.")  
             return True
-        
-    client.send(b"401: Authentication failed. Closing connection with server...")   
+     
+    client.send(b"401: Invalid token. Closing connection with server...")
     return False
     
 
@@ -81,6 +97,7 @@ def get_id_from_username(username):
     for i in range(len(users)):
         if users[i] == username:
             return clients.loc[i, 'id']
+        
         
 def get_messages(client_id, dest_id):
     client_1 = client_sockets[client_id]
@@ -117,9 +134,6 @@ def get_messages(client_id, dest_id):
     time.sleep(0.5)
 
     client_2.send(nonce_recv)
-    
-
-
     
 
     print(f"Message sent from {client_id} to {dest_id}")
@@ -174,7 +188,10 @@ def handle_client(client, addr):
         # handle the client's requests
         print("New client connected...", addr)
 
+        # username = client.recv(1024).decode('utf-8')
+
         token = client.recv(1024).decode('utf-8')
+
         if client_auth(client, token):
             
             client_id = get_client(token)
@@ -201,10 +218,6 @@ def handle_client(client, addr):
     except ConnectionResetError:
         print("ConnectionResetError: Client closed the connection unexpectedly.")
 
-
-
-
- 
 
 
 def main():
